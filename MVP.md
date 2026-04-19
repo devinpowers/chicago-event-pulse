@@ -107,12 +107,14 @@ Terraform should create:
   - `processed-events`
   - `email-logs`
 - Azure Function App
-- Linux Consumption Plan
+- Linux Basic App Service Plan
 - Application Insights
 - Log Analytics Workspace
 - Azure Key Vault
 - Managed identity for the Function App
 - Role assignments so the Function App can read secrets and write blobs
+
+Note: The first deployment uses a Basic `B1` App Service Plan because some Azure subscriptions start with no quota for Consumption/Dynamic Function plans. A later cleanup can switch back to the serverless `Y1` Consumption plan after quota is available.
 
 ## Secrets
 

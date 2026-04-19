@@ -64,7 +64,7 @@ resource "azurerm_service_plan" "main" {
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   os_type             = "Linux"
-  sku_name            = "Y1"
+  sku_name            = "B1"
 }
 
 resource "azurerm_key_vault" "main" {
@@ -137,6 +137,8 @@ resource "azurerm_linux_function_app" "main" {
   }
 
   site_config {
+    always_on = true
+
     application_stack {
       python_version = "3.11"
     }
