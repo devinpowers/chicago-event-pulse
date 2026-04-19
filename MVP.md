@@ -96,6 +96,44 @@ This project follows a scheduled serverless ETL and notification pattern.
 4. **Notify**
    - The function builds an HTML email and sends it through SendGrid.
 
+## Current Setup Status
+
+Completed:
+
+- GitHub repository created and connected.
+- GitHub Actions workflow created.
+- GitHub Actions deployment changed to manual trigger.
+- Azure service principal created for GitHub Actions.
+- GitHub repository secrets configured.
+- Terraform remote state configured in Azure Storage.
+- Terraform infrastructure deployed successfully.
+- Azure Function App deployed successfully.
+- Azure Function App is running in Central US on a Basic `B1` App Service Plan.
+
+Still needs verification:
+
+- Confirm the timer function is visible in the Azure Portal.
+- Confirm Key Vault references resolve inside the Function App.
+- Confirm the Ticketmaster API call succeeds from Azure.
+- Confirm SendGrid accepts the configured sender and sends the email.
+- Confirm raw event data, processed events, and email send logs are written to Blob Storage.
+- Confirm Application Insights shows function logs and errors.
+
+## Remaining Decisions
+
+These decisions should be made before calling the MVP complete:
+
+- **Manual test trigger:** Add a temporary HTTP-triggered function or use a `run_on_startup` test run.
+- **Schedule:** Keep the email at 7:00 AM Chicago time or choose a different time.
+- **Email recipient:** Send only to one personal email for MVP or support a short static list.
+- **Email sender:** Keep SendGrid Single Sender Verification or move to domain authentication.
+- **Event count:** Keep the top 10 events or increase to 15-20.
+- **Ranking logic:** Sort by start time only or prioritize category, venue, free events, or popularity.
+- **Storage format:** Keep Blob Storage JSON files for MVP or add Azure Table Storage/Cosmos DB for queryable history.
+- **Retry behavior:** Fail fast on API/email errors or retry a few times before logging failure.
+- **Manual re-send:** Add an admin endpoint to resend today's digest.
+- **Cost posture:** Stay on `B1` while East US quota is blocked or later switch back to `Y1` Consumption.
+
 ## Azure Resources
 
 Terraform should create:
@@ -126,6 +164,192 @@ Store these in Azure Key Vault:
 - `DAILY-EMAIL-FROM`
 
 The Function App should use managed identity to read the secrets at runtime.
+
+## Persistence Design
+
+For the MVP, the Azure Storage Account is the persistence layer. Blob Storage is enough because the first version mostly needs daily snapshots and audit files, not complex querying.
+
+The logical data model has four entities:
+
+- **Raw API Snapshot:** Exact response from Ticketmaster for a run.
+- **Processed Event:** Normalized event object used by the email formatter.
+- **Daily Digest:** The selected events for one digest date.
+- **Email Send Log:** SendGrid send result and run metadata.
+
+```mermaid
+erDiagram
+    DAILY_DIGEST ||--o{ PROCESSED_EVENT : contains
+    DAILY_DIGEST ||--o{ RAW_API_SNAPSHOT : uses
+    DAILY_DIGEST ||--o{ EMAIL_SEND_LOG : records
+
+    DAILY_DIGEST {
+        string digest_date PK
+        string city
+        string timezone
+        string status
+        int event_count
+        datetime generated_at
+        string processed_blob_path
+    }
+
+    PROCESSED_EVENT {
+        string event_id PK
+        string digest_date FK
+        string source
+        string source_event_id
+        string title
+        string event_date
+        string start_time
+        string venue
+        string address
+        string category
+        decimal price_min
+        decimal price_max
+        string url
+    }
+
+    RAW_API_SNAPSHOT {
+        string snapshot_id PK
+        string digest_date FK
+        string source
+        string request_url
+        int status_code
+        datetime fetched_at
+        string raw_blob_path
+    }
+
+    EMAIL_SEND_LOG {
+        string send_id PK
+        string digest_date FK
+        string provider
+        string recipient
+        string sender
+        string subject
+        int status_code
+        string provider_message_id
+        datetime sent_at
+        string log_blob_path
+    }
+```
+
+## Blob Storage Schema
+
+Blob containers:
+
+```text
+raw-events/
+processed-events/
+email-logs/
+```
+
+Blob path pattern:
+
+```text
+raw-events/yyyy/mm/dd/ticketmaster.json
+processed-events/yyyy/mm/dd/events.json
+processed-events/yyyy/mm/dd/digest.json
+email-logs/yyyy/mm/dd/send-result.json
+```
+
+### `raw-events/yyyy/mm/dd/ticketmaster.json`
+
+Stores the unmodified Ticketmaster Discovery API response.
+
+Useful fields to capture in metadata or a wrapper later:
+
+```json
+{
+  "source": "Ticketmaster",
+  "digest_date": "2026-04-19",
+  "fetched_at": "2026-04-19T12:00:00Z",
+  "status_code": 200,
+  "payload": {}
+}
+```
+
+### `processed-events/yyyy/mm/dd/events.json`
+
+Stores the normalized events array.
+
+```json
+[
+  {
+    "event_id": "ticketmaster:abc123",
+    "source": "Ticketmaster",
+    "source_event_id": "abc123",
+    "title": "Chicago Bulls vs. Milwaukee Bucks",
+    "date": "2026-04-19",
+    "start_time": "19:00",
+    "venue": "United Center",
+    "address": "1901 W Madison St, Chicago, IL",
+    "category": "Sports",
+    "price_min": 35,
+    "price_max": 180,
+    "url": "https://example.com/event"
+  }
+]
+```
+
+### `processed-events/yyyy/mm/dd/digest.json`
+
+Stores run-level digest metadata.
+
+```json
+{
+  "digest_date": "2026-04-19",
+  "city": "Chicago",
+  "timezone": "America/Chicago",
+  "status": "sent",
+  "event_count": 10,
+  "generated_at": "2026-04-19T12:00:00Z",
+  "processed_blob_path": "processed-events/2026/04/19/events.json"
+}
+```
+
+### `email-logs/yyyy/mm/dd/send-result.json`
+
+Stores SendGrid result data and enough metadata to debug delivery.
+
+```json
+{
+  "provider": "SendGrid",
+  "recipient": "you@example.com",
+  "sender": "verified-sender@example.com",
+  "subject": "Today's Chicago Events - April 19, 2026",
+  "status_code": 202,
+  "provider_message_id": "sendgrid-message-id",
+  "sent_at": "2026-04-19T12:00:15Z"
+}
+```
+
+## Future Database Option
+
+If the project needs searchable history, user preferences, or a dashboard, add a queryable database later.
+
+Recommended next database option: **Azure Table Storage**.
+
+Why Table Storage:
+
+- Low cost.
+- Simple key-value access.
+- Good fit for daily digest metadata and event history.
+- Already part of Azure Storage.
+
+Possible table design:
+
+```text
+Table: Events
+PartitionKey: digest_date
+RowKey: source_event_id
+
+Table: Digests
+PartitionKey: city
+RowKey: digest_date
+
+Table: EmailLogs
+PartitionKey: digest_date
+RowKey: send_id
+```
 
 ## Repo Structure
 
