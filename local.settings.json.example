@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "TICKETMASTER_API_KEY": "replace-me",
+    "SENDGRID_API_KEY": "replace-me",
+    "DAILY_EMAIL_TO": "you@example.com",
+    "DAILY_EMAIL_FROM": "verified-sender@example.com",
+    "STORAGE_ACCOUNT_NAME": "replace-me"
+  }
+}
+

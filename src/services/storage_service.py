@@ -1,0 +1,21 @@
+import json
+from datetime import date
+
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+
+
+class StorageService:
+    def __init__(self, account_name: str, connection_string: str | None = None) -> None:
+        if connection_string and not connection_string.startswith("@Microsoft.KeyVault"):
+            self.client = BlobServiceClient.from_connection_string(connection_string)
+        else:
+            account_url = f"https://{account_name}.blob.core.windows.net"
+            self.client = BlobServiceClient(account_url, credential=DefaultAzureCredential())
+
+    def upload_json(self, container_name: str, target_date: date, file_name: str, payload: object) -> None:
+        blob_name = f"{target_date:%Y/%m/%d}/{file_name}"
+        blob_client = self.client.get_blob_client(container=container_name, blob=blob_name)
+        data = json.dumps(payload, indent=2, default=str)
+        blob_client.upload_blob(data, overwrite=True, content_type="application/json")
+
