@@ -3,7 +3,6 @@ from decimal import Decimal
 from typing import List, Optional
 
 from azure.data.tables import TableServiceClient
-from azure.identity import DefaultAzureCredential
 
 from src.models.event import Event
 
@@ -13,8 +12,7 @@ class TableStorageService:
         if connection_string and not connection_string.startswith("@Microsoft.KeyVault"):
             self.client = TableServiceClient.from_connection_string(connection_string)
         else:
-            account_url = f"https://{account_name}.table.core.windows.net"
-            self.client = TableServiceClient(endpoint=account_url, credential=DefaultAzureCredential())
+            raise RuntimeError(f"Missing storage connection string for account: {account_name}")
 
     def upsert_digest(self, target_date: date, digest: dict) -> None:
         table = self.client.get_table_client("Digests")

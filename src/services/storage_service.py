@@ -2,7 +2,6 @@ import json
 from datetime import date
 from typing import Optional
 
-from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
 
@@ -11,8 +10,7 @@ class StorageService:
         if connection_string and not connection_string.startswith("@Microsoft.KeyVault"):
             self.client = BlobServiceClient.from_connection_string(connection_string)
         else:
-            account_url = f"https://{account_name}.blob.core.windows.net"
-            self.client = BlobServiceClient(account_url, credential=DefaultAzureCredential())
+            raise RuntimeError(f"Missing storage connection string for account: {account_name}")
 
     def upload_json(self, container_name: str, target_date: date, file_name: str, payload: object) -> None:
         blob_name = f"{target_date:%Y/%m/%d}/{file_name}"
