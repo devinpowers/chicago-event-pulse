@@ -166,10 +166,10 @@ resource "azurerm_linux_function_app" "main" {
     AzureWebJobsFeatureFlags = "EnableWorkerIndexing"
     WEBSITE_TIME_ZONE        = "America/Chicago"
     STORAGE_ACCOUNT_NAME     = azurerm_storage_account.main.name
-    TICKETMASTER_API_KEY     = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.ticketmaster_api_key.id})"
-    SENDGRID_API_KEY         = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.sendgrid_api_key.id})"
-    DAILY_EMAIL_TO           = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.daily_email_to.id})"
-    DAILY_EMAIL_FROM         = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.daily_email_from.id})"
+    TICKETMASTER_API_KEY     = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.ticketmaster_api_key.versionless_id})"
+    SENDGRID_API_KEY         = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.sendgrid_api_key.versionless_id})"
+    DAILY_EMAIL_TO           = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.daily_email_to.versionless_id})"
+    DAILY_EMAIL_FROM         = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.daily_email_from.versionless_id})"
   }
 }
 
