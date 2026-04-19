@@ -81,18 +81,16 @@ jobs:
         run: |
           echo "function_app_name=$(terraform output -raw function_app_name)" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install function dependencies
+      - name: Prepare function package
         run: |
-          python -m pip install --upgrade pip
-          pip install --target=".python_packages/lib/site-packages" -r requirements.txt
+          mkdir function-package
+          cp function_app.py host.json requirements.txt function-package/
+          cp -R src function-package/src
 
       - name: Deploy Azure Function
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ steps.tfout.outputs.function_app_name }}
-          package: "."
+          package: "function-package"
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true

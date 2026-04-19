@@ -2,5 +2,6 @@ azure-functions==1.21.3
 azure-data-tables==12.6.0
 azure-storage-blob==12.24.0
 cryptography==42.0.8
+yarl==1.9.11
 pytest==8.3.4
 requests==2.32.3
