@@ -2,12 +2,12 @@ import json
 from datetime import date
 from typing import Optional
 
-from azure.storage.blob import BlobServiceClient
-
 
 class StorageService:
     def __init__(self, account_name: str, connection_string: Optional[str] = None) -> None:
         if connection_string and not connection_string.startswith("@Microsoft.KeyVault"):
+            from azure.storage.blob import BlobServiceClient
+
             self.client = BlobServiceClient.from_connection_string(connection_string)
         else:
             raise RuntimeError(f"Missing storage connection string for account: {account_name}")

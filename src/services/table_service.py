@@ -2,14 +2,14 @@ from datetime import date
 from decimal import Decimal
 from typing import List, Optional
 
-from azure.data.tables import TableServiceClient
-
 from src.models.event import Event
 
 
 class TableStorageService:
     def __init__(self, account_name: str, connection_string: Optional[str] = None) -> None:
         if connection_string and not connection_string.startswith("@Microsoft.KeyVault"):
+            from azure.data.tables import TableServiceClient
+
             self.client = TableServiceClient.from_connection_string(connection_string)
         else:
             raise RuntimeError(f"Missing storage connection string for account: {account_name}")
