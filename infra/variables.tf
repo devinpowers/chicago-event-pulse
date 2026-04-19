@@ -11,8 +11,14 @@ variable "project_name" {
 
 variable "location" {
   type        = string
-  description = "Azure region."
+  description = "Primary Azure region for shared resources."
   default     = "eastus"
+}
+
+variable "app_service_location" {
+  type        = string
+  description = "Azure region for the App Service Plan and Function App."
+  default     = "centralus"
 }
 
 variable "environment" {
@@ -44,4 +50,3 @@ variable "daily_email_from" {
   description = "Verified SendGrid sender email address."
   sensitive   = true
 }
-

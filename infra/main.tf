@@ -62,7 +62,7 @@ resource "azurerm_storage_container" "email_logs" {
 resource "azurerm_service_plan" "main" {
   name                = "asp-${local.name_prefix}"
   resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  location            = var.app_service_location
   os_type             = "Linux"
   sku_name            = "B1"
 }
@@ -126,7 +126,7 @@ resource "azurerm_key_vault_secret" "daily_email_from" {
 resource "azurerm_linux_function_app" "main" {
   name                = "func-${local.name_prefix}-${random_string.suffix.result}"
   resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  location            = azurerm_service_plan.main.location
 
   service_plan_id            = azurerm_service_plan.main.id
   storage_account_name       = azurerm_storage_account.main.name

@@ -1,9 +1,9 @@
 subscription_id       = "00000000-0000-0000-0000-000000000000"
 project_name          = "chicago-event-pulse"
 location              = "eastus"
+app_service_location  = "centralus"
 environment           = "dev"
 ticketmaster_api_key  = "replace-me"
 sendgrid_api_key      = "replace-me"
 daily_email_to        = "you@example.com"
 daily_email_from      = "verified-sender@example.com"
-

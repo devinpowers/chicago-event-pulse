@@ -114,7 +114,7 @@ Terraform should create:
 - Managed identity for the Function App
 - Role assignments so the Function App can read secrets and write blobs
 
-Note: The first deployment uses a Basic `B1` App Service Plan because some Azure subscriptions start with no quota for Consumption/Dynamic Function plans. A later cleanup can switch back to the serverless `Y1` Consumption plan after quota is available.
+Note: The first deployment uses a Basic `B1` App Service Plan in Central US because this subscription has App Service quota there, while East US is currently blocked for Basic/Dynamic App Service plans. A later cleanup can switch back to the serverless `Y1` Consumption plan after quota is available.
 
 ## Secrets
 
