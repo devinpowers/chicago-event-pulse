@@ -23,7 +23,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest
+        run: |
+          python -m compileall function_app.py src tests
+          python -c "import function_app; print('function_app import ok')"
+          pytest
 
   deploy:
     name: Terraform and Function Deploy
