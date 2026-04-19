@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -90,12 +90,25 @@ jobs:
       - name: Set up function build Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.11"
 
       - name: Install function dependencies
         run: |
           python -m pip install --upgrade pip
           pip install --target="function-package/.python_packages/lib/site-packages" -r requirements.txt
+
+      - name: Smoke test function package
+        run: |
+          PYTHONPATH="function-package/.python_packages/lib/site-packages" python - <<'PY'
+          import function_app
+
+          functions = sorted(fn.get_function_name() for fn in function_app.app.get_functions())
+          expected = ["daily_events_timer", "run_digest"]
+          if functions != expected:
+              raise SystemExit(f"Expected {expected}, got {functions}")
+
+          print(f"Indexed functions: {functions}")
+          PY
 
       - name: Deploy Azure Function
         uses: Azure/functions-action@v1
