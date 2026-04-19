@@ -59,6 +59,21 @@ resource "azurerm_storage_container" "email_logs" {
   container_access_type = "private"
 }
 
+resource "azurerm_storage_table" "events" {
+  name                 = "Events"
+  storage_account_name = azurerm_storage_account.main.name
+}
+
+resource "azurerm_storage_table" "digests" {
+  name                 = "Digests"
+  storage_account_name = azurerm_storage_account.main.name
+}
+
+resource "azurerm_storage_table" "email_logs" {
+  name                 = "EmailLogs"
+  storage_account_name = azurerm_storage_account.main.name
+}
+
 resource "azurerm_service_plan" "main" {
   name                = "asp-${local.name_prefix}"
   resource_group_name = azurerm_resource_group.main.name
@@ -149,6 +164,7 @@ resource "azurerm_linux_function_app" "main" {
   app_settings = {
     FUNCTIONS_WORKER_RUNTIME = "python"
     AzureWebJobsFeatureFlags = "EnableWorkerIndexing"
+    WEBSITE_TIME_ZONE        = "America/Chicago"
     STORAGE_ACCOUNT_NAME     = azurerm_storage_account.main.name
     TICKETMASTER_API_KEY     = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.ticketmaster_api_key.id})"
     SENDGRID_API_KEY         = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.sendgrid_api_key.id})"
@@ -160,6 +176,12 @@ resource "azurerm_linux_function_app" "main" {
 resource "azurerm_role_assignment" "function_blob_contributor" {
   scope                = azurerm_storage_account.main.id
   role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_function_app.main.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "function_table_contributor" {
+  scope                = azurerm_storage_account.main.id
+  role_definition_name = "Storage Table Data Contributor"
   principal_id         = azurerm_linux_function_app.main.identity[0].principal_id
 }
 

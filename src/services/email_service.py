@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import requests
 
 
@@ -20,7 +22,11 @@ def send_email(api_key: str, sender: str, recipient: str, subject: str, html: st
     response.raise_for_status()
 
     return {
+        "provider": "SendGrid",
+        "sender": sender,
+        "recipient": recipient,
+        "subject": subject,
         "status_code": response.status_code,
-        "message_id": response.headers.get("X-Message-Id"),
+        "provider_message_id": response.headers.get("X-Message-Id"),
+        "sent_at": datetime.now(timezone.utc).isoformat(),
     }
-

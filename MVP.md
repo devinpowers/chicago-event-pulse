@@ -123,13 +123,13 @@ Still needs verification:
 
 These decisions should be made before calling the MVP complete:
 
-- **Manual test trigger:** Add a temporary HTTP-triggered function or use a `run_on_startup` test run.
-- **Schedule:** Keep the email at 7:00 AM Chicago time or choose a different time.
-- **Email recipient:** Send only to one personal email for MVP or support a short static list.
-- **Email sender:** Keep SendGrid Single Sender Verification or move to domain authentication.
+- **Manual test trigger:** Decided for MVP. Use a protected HTTP-triggered function at `/api/run-digest`.
+- **Schedule:** Decided for MVP. Send daily at 7:00 AM America/Chicago.
+- **Email recipient:** Decided for MVP. Send to one configured recipient.
+- **Email sender:** Decided for MVP. Use SendGrid Single Sender Verification.
 - **Event count:** Keep the top 10 events or increase to 15-20.
 - **Ranking logic:** Sort by start time only or prioritize category, venue, free events, or popularity.
-- **Storage format:** Keep Blob Storage JSON files for MVP or add Azure Table Storage/Cosmos DB for queryable history.
+- **Storage format:** Decided for MVP. Keep Blob Storage JSON snapshots and add Azure Table Storage for queryable metadata/history.
 - **Retry behavior:** Fail fast on API/email errors or retry a few times before logging failure.
 - **Manual re-send:** Add an admin endpoint to resend today's digest.
 - **Cost posture:** Stay on `B1` while East US quota is blocked or later switch back to `Y1` Consumption.
@@ -144,6 +144,10 @@ Terraform should create:
   - `raw-events`
   - `processed-events`
   - `email-logs`
+- Storage tables:
+  - `Events`
+  - `Digests`
+  - `EmailLogs`
 - Azure Function App
 - Linux Basic App Service Plan
 - Application Insights
@@ -153,6 +157,8 @@ Terraform should create:
 - Role assignments so the Function App can read secrets and write blobs
 
 Note: The first deployment uses a Basic `B1` App Service Plan in Central US because this subscription has App Service quota there, while East US is currently blocked for Basic/Dynamic App Service plans. A later cleanup can switch back to the serverless `Y1` Consumption plan after quota is available.
+
+The Function App is configured with `WEBSITE_TIME_ZONE=America/Chicago` and the timer trigger uses `0 0 7 * * *`, so the scheduled run is 7:00 AM Chicago time.
 
 ## Secrets
 
@@ -165,9 +171,90 @@ Store these in Azure Key Vault:
 
 The Function App should use managed identity to read the secrets at runtime.
 
+## Email Delivery Decision
+
+For the MVP, the app sends one daily digest email.
+
+Flow:
+
+1. Azure Function runs at 7:00 AM America/Chicago.
+2. Function calls the Ticketmaster Discovery API for Chicago events happening that day.
+3. Function saves the raw Ticketmaster response to Blob Storage.
+4. Function normalizes and ranks the events.
+5. Function saves normalized events to Blob Storage and Azure Table Storage.
+6. Function builds a basic HTML email.
+7. Function sends the email through SendGrid.
+8. Function saves the SendGrid result to Blob Storage and Azure Table Storage.
+
+Keep this basic until the first end-to-end prototype is verified.
+
+## Manual Test Trigger
+
+The MVP includes a protected HTTP-triggered function for on-demand testing:
+
+```text
+POST /api/run-digest
+```
+
+The endpoint runs the same digest pipeline as the timer:
+
+- Fetch Ticketmaster events.
+- Write raw JSON to Blob Storage.
+- Write processed events to Blob Storage.
+- Write digest/event/email records to Azure Table Storage.
+- Send the SendGrid email.
+- Return a JSON summary.
+
+### Run From Azure Portal
+
+1. Open the Function App.
+2. Go to **Functions**.
+3. Open `run_digest`.
+4. Click **Get function URL**.
+5. Copy the URL.
+6. Run it with `curl` or another HTTP client.
+
+### Run With `curl`
+
+Use the copied function URL:
+
+```bash
+curl -X POST "https://func-chicago-event-pulse-dev-0pn9zc.azurewebsites.net/api/run-digest?code=FUNCTION_KEY"
+```
+
+To test a specific date:
+
+```bash
+curl -X POST "https://func-chicago-event-pulse-dev-0pn9zc.azurewebsites.net/api/run-digest?date=2026-04-19&code=FUNCTION_KEY"
+```
+
+Expected success response:
+
+```json
+{
+  "ok": true,
+  "digest": {
+    "digest_date": "2026-04-19",
+    "city": "Chicago",
+    "timezone": "America/Chicago",
+    "status": "sent",
+    "event_count": 10
+  }
+}
+```
+
+Expected output in Storage:
+
+```text
+raw-events/yyyy/mm/dd/ticketmaster.json
+processed-events/yyyy/mm/dd/events.json
+processed-events/yyyy/mm/dd/digest.json
+email-logs/yyyy/mm/dd/send-result.json
+```
+
 ## Persistence Design
 
-For the MVP, the Azure Storage Account is the persistence layer. Blob Storage is enough because the first version mostly needs daily snapshots and audit files, not complex querying.
+For the MVP, the Azure Storage Account is the persistence layer. Blob Storage stores daily snapshots and audit files. Azure Table Storage stores queryable digest, event, and email log records.
 
 The logical data model has four entities:
 
@@ -324,18 +411,7 @@ Stores SendGrid result data and enough metadata to debug delivery.
 
 ## Future Database Option
 
-If the project needs searchable history, user preferences, or a dashboard, add a queryable database later.
-
-Recommended next database option: **Azure Table Storage**.
-
-Why Table Storage:
-
-- Low cost.
-- Simple key-value access.
-- Good fit for daily digest metadata and event history.
-- Already part of Azure Storage.
-
-Possible table design:
+Azure Table Storage design:
 
 ```text
 Table: Events
@@ -350,6 +426,37 @@ Table: EmailLogs
 PartitionKey: digest_date
 RowKey: send_id
 ```
+
+## Current Cost Estimate
+
+Current deployed design:
+
+- Linux App Service Plan `B1` in Central US.
+- Azure Function App running on that `B1` plan.
+- Standard LRS Storage Account in East US.
+- Blob Storage containers and Azure Table Storage tables.
+- Key Vault Standard.
+- Log Analytics and Application Insights.
+
+Expected monthly cost for the MVP is mostly the App Service Plan.
+
+Estimated baseline:
+
+```text
+B1 Linux App Service Plan: about $13.14/month
+Storage blobs/tables: usually under $1/month for this MVP
+Key Vault secret operations: usually pennies for this MVP
+Application Insights/Log Analytics: usually $0-$2/month if logs stay tiny
+Estimated total: about $14-$17/month
+```
+
+Cost notes:
+
+- The `B1` plan runs continuously, so it is the main cost.
+- Azure Table Storage is very cheap for this use case because we only write a few rows per day.
+- Blob Storage should remain tiny because JSON event snapshots are small.
+- Application Insights can grow if verbose logs are added, so keep log volume low.
+- Once App Service quota allows it, switching to a Consumption or Flex Consumption Function plan should reduce cost for a once-daily job.
 
 ## Repo Structure
 

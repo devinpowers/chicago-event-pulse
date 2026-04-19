@@ -13,7 +13,8 @@ class Event:
     price_max: float | None
     url: str | None
     source: str
+    event_id: str | None = None
+    source_event_id: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
-

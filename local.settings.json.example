@@ -3,6 +3,7 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "python",
+    "WEBSITE_TIME_ZONE": "America/Chicago",
     "TICKETMASTER_API_KEY": "replace-me",
     "SENDGRID_API_KEY": "replace-me",
     "DAILY_EMAIL_TO": "you@example.com",
@@ -10,4 +11,3 @@
     "STORAGE_ACCOUNT_NAME": "replace-me"
   }
 }
-

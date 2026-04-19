@@ -15,6 +15,42 @@ The MVP sends one daily email with events happening in Chicago today.
 
 See [MVP.md](MVP.md) for the full architecture and build checklist.
 
+## Manual Test Run
+
+The deployed Function App includes a protected HTTP trigger:
+
+```text
+POST /api/run-digest
+```
+
+To run today's digest manually, get the function URL from the Azure Portal:
+
+```text
+Function App -> Functions -> run_digest -> Get function URL
+```
+
+Then call it:
+
+```bash
+curl -X POST "https://func-chicago-event-pulse-dev-0pn9zc.azurewebsites.net/api/run-digest?code=FUNCTION_KEY"
+```
+
+To test a specific date:
+
+```bash
+curl -X POST "https://func-chicago-event-pulse-dev-0pn9zc.azurewebsites.net/api/run-digest?date=2026-04-19&code=FUNCTION_KEY"
+```
+
+The manual trigger fetches Ticketmaster events, writes Blob/Table Storage records, sends the SendGrid email, and returns a JSON summary.
+
+## Schedule
+
+The timer trigger runs daily at:
+
+```text
+7:00 AM America/Chicago
+```
+
 ## Local Setup
 
 ```bash
@@ -43,4 +79,3 @@ The function expects these settings:
 - `AzureWebJobsStorage`
 
 In Azure, secrets should be stored in Key Vault and exposed to the Function App through Key Vault references.
-

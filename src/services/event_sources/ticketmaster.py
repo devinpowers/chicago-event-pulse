@@ -55,6 +55,8 @@ def _normalize_event(item: dict) -> Event | None:
         price_max=price_range.get("max") if price_range else None,
         url=item.get("url"),
         source="Ticketmaster",
+        event_id=f"ticketmaster:{item.get('id')}" if item.get("id") else None,
+        source_event_id=item.get("id"),
     )
 
 
@@ -84,4 +86,3 @@ def _format_address(venue: dict | None) -> str | None:
 
     parts = [part for part in (address, city, state) if part]
     return ", ".join(parts) if parts else None
-
