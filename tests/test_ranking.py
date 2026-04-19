@@ -1,3 +1,5 @@
+from typing import Optional
+
 from src.models.event import Event
 from src.services.ranking import rank_events
 
@@ -12,7 +14,7 @@ def test_rank_events_sorts_by_start_time_and_limits_results():
     assert [event.title for event in ranked] == ["Morning Market", "Late Show"]
 
 
-def _event(title: str, start_time: str | None) -> Event:
+def _event(title: str, start_time: Optional[str]) -> Event:
     return Event(
         title=title,
         date="2026-04-19",
@@ -25,4 +27,3 @@ def _event(title: str, start_time: str | None) -> Event:
         url=None,
         source="Ticketmaster",
     )
-

@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import requests
@@ -29,12 +30,12 @@ def fetch_chicago_events(api_key: str, target_date: date) -> dict:
     return response.json()
 
 
-def normalize_ticketmaster_events(payload: dict) -> list[Event]:
+def normalize_ticketmaster_events(payload: dict) -> List[Event]:
     events = payload.get("_embedded", {}).get("events", [])
     return [event for item in events if (event := _normalize_event(item))]
 
 
-def _normalize_event(item: dict) -> Event | None:
+def _normalize_event(item: dict) -> Optional[Event]:
     dates = item.get("dates", {}).get("start", {})
     local_date = dates.get("localDate")
     if not local_date:
@@ -60,11 +61,11 @@ def _normalize_event(item: dict) -> Event | None:
     )
 
 
-def _first(items: list[dict]) -> dict | None:
+def _first(items: List[Dict]) -> Optional[Dict]:
     return items[0] if items else None
 
 
-def _category(classification: dict | None) -> str | None:
+def _category(classification: Optional[dict]) -> Optional[str]:
     if not classification:
         return None
 
@@ -76,7 +77,7 @@ def _category(classification: dict | None) -> str | None:
     return None
 
 
-def _format_address(venue: dict | None) -> str | None:
+def _format_address(venue: Optional[dict]) -> Optional[str]:
     if not venue:
         return None
 

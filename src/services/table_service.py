@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from typing import List, Optional
 
 from azure.data.tables import TableServiceClient
 from azure.identity import DefaultAzureCredential
@@ -8,7 +9,7 @@ from src.models.event import Event
 
 
 class TableStorageService:
-    def __init__(self, account_name: str, connection_string: str | None = None) -> None:
+    def __init__(self, account_name: str, connection_string: Optional[str] = None) -> None:
         if connection_string and not connection_string.startswith("@Microsoft.KeyVault"):
             self.client = TableServiceClient.from_connection_string(connection_string)
         else:
@@ -25,7 +26,7 @@ class TableStorageService:
             }
         )
 
-    def upsert_events(self, target_date: date, events: list[Event]) -> None:
+    def upsert_events(self, target_date: date, events: List[Event]) -> None:
         table = self.client.get_table_client("Events")
         for index, event in enumerate(events):
             event_dict = _table_safe(event.to_dict())

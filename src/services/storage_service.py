@@ -1,12 +1,13 @@
 import json
 from datetime import date
+from typing import Optional
 
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
 
 class StorageService:
-    def __init__(self, account_name: str, connection_string: str | None = None) -> None:
+    def __init__(self, account_name: str, connection_string: Optional[str] = None) -> None:
         if connection_string and not connection_string.startswith("@Microsoft.KeyVault"):
             self.client = BlobServiceClient.from_connection_string(connection_string)
         else:
@@ -18,4 +19,3 @@ class StorageService:
         blob_client = self.client.get_blob_client(container=container_name, blob=blob_name)
         data = json.dumps(payload, indent=2, default=str)
         blob_client.upload_blob(data, overwrite=True, content_type="application/json")
-

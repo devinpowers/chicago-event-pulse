@@ -1,5 +1,6 @@
 from datetime import date
 from html import escape
+from typing import List
 
 from src.models.event import Event
 
@@ -8,7 +9,7 @@ def build_subject(target_date: date) -> str:
     return f"Today's Chicago Events - {target_date.strftime('%B %-d, %Y')}"
 
 
-def build_html_email(events: list[Event], target_date: date) -> str:
+def build_html_email(events: List[Event], target_date: date) -> str:
     rows = "\n".join(_event_block(event) for event in events)
     if not rows:
         rows = "<p>No Ticketmaster events were found for Chicago today.</p>"
@@ -52,4 +53,3 @@ def _format_price(event: Event) -> str:
     if event.price_min is not None:
         return f"From ${event.price_min:g}"
     return f"Up to ${event.price_max:g}"
-

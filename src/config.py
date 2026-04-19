@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -9,7 +10,7 @@ class AppConfig:
     daily_email_to: str
     daily_email_from: str
     storage_account_name: str
-    storage_connection_string: str | None = None
+    storage_connection_string: Optional[str] = None
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -28,4 +29,3 @@ def _required(name: str) -> str:
     if not value:
         raise RuntimeError(f"Missing required setting: {name}")
     return value
-
