@@ -18,6 +18,7 @@ def test_normalize_ticketmaster_events_maps_expected_fields():
                                 "address": {"line1": "1901 W Madison St"},
                                 "city": {"name": "Chicago"},
                                 "state": {"stateCode": "IL"},
+                                "location": {"latitude": "41.8807", "longitude": "-87.6742"},
                             }
                         ]
                     },
@@ -37,4 +38,5 @@ def test_normalize_ticketmaster_events_maps_expected_fields():
     assert events[0].price_min == 35.0
     assert events[0].price_max == 180.0
     assert events[0].source == "Ticketmaster"
-
+    assert events[0].latitude == 41.8807
+    assert events[0].longitude == -87.6742

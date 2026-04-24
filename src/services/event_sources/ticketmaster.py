@@ -60,6 +60,8 @@ class TicketmasterEventSource(BaseApiEventSource):
             source=self.name,
             event_id=f"ticketmaster:{item.get('id')}" if item.get("id") else None,
             source_event_id=item.get("id"),
+            latitude=self._float_or_none(venue.get("location", {}).get("latitude") if venue else None),
+            longitude=self._float_or_none(venue.get("location", {}).get("longitude") if venue else None),
         )
 
     def _category(self, classification: Optional[dict]) -> Optional[str]:
@@ -83,6 +85,15 @@ class TicketmasterEventSource(BaseApiEventSource):
 
         parts = [part for part in (address, city, state) if part]
         return ", ".join(parts) if parts else None
+
+    def _float_or_none(self, value: Optional[str]) -> Optional[float]:
+        if value in (None, ""):
+            return None
+
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
 
 def fetch_chicago_events(api_key: str, target_date: date) -> dict:

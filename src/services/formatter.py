@@ -16,15 +16,35 @@ class EmailMessage:
 class EventEmailFormatter:
     """Turns Event objects into the email subject and HTML body."""
 
-    def build_message(self, events: List[Event], target_date: date) -> EmailMessage:
+    def build_message(
+        self,
+        events: List[Event],
+        target_date: date,
+        transit_summary: str | None = None,
+        transit_pick_title: str | None = None,
+        transit_pick_note: str | None = None,
+    ) -> EmailMessage:
         subject = self.build_subject(target_date)
-        html = self.build_html_email(events, target_date)
+        html = self.build_html_email(
+            events,
+            target_date,
+            transit_summary=transit_summary,
+            transit_pick_title=transit_pick_title,
+            transit_pick_note=transit_pick_note,
+        )
         return EmailMessage(subject=subject, html=html)
 
     def build_subject(self, target_date: date) -> str:
         return f"Today's Chicago Events - {target_date.strftime('%B %-d, %Y')}"
 
-    def build_html_email(self, events: List[Event], target_date: date) -> str:
+    def build_html_email(
+        self,
+        events: List[Event],
+        target_date: date,
+        transit_summary: str | None = None,
+        transit_pick_title: str | None = None,
+        transit_pick_note: str | None = None,
+    ) -> str:
         event_blocks = []
 
         for event in events:
@@ -39,6 +59,7 @@ class EventEmailFormatter:
         earliest_time = escape(self._earliest_time(events))
         lowest_price = escape(self._lowest_price(events))
         source_label = escape(self._source_label(events))
+        transit_block = self._transit_block(transit_summary, transit_pick_title, transit_pick_note)
 
         return f"""<!doctype html>
 <html>
@@ -95,6 +116,7 @@ class EventEmailFormatter:
                 </table>
               </td>
             </tr>
+            {transit_block}
             <tr>
               <td style="padding:0 28px 8px 28px;">
                 <h2 style="margin:0; color:#18232b; font-size:18px; line-height:24px; font-weight:bold;">
@@ -137,6 +159,7 @@ class EventEmailFormatter:
         price = escape(self._format_price(event))
         link = escape(event.url or "#")
         detail_line = escape(self._event_detail_line(event, price))
+        transit_note = self._transit_note_block(event)
 
         return f"""
             <tr>
@@ -150,6 +173,7 @@ class EventEmailFormatter:
                     <td valign="top" style="padding:18px 0;">
                       <h3 style="margin:0 0 6px 0; color:#18232b; font-size:18px; line-height:24px; font-weight:bold;">{title}</h3>
                       <p style="margin:0 0 12px 0; color:#53616a; font-size:14px; line-height:21px;">{detail_line}</p>
+                      {transit_note}
                       <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                         <tr>
                           <td bgcolor="#2a7f9e" style="padding:9px 14px;">
@@ -220,7 +244,51 @@ class EventEmailFormatter:
             details.append(event.address)
 
         details.append(price)
+        details.append(f"Source: {event.source}")
         return " | ".join(details)
+
+    def _transit_block(
+        self,
+        transit_summary: str | None,
+        transit_pick_title: str | None,
+        transit_pick_note: str | None,
+    ) -> str:
+        if not transit_summary and not transit_pick_title:
+            return ""
+
+        summary_html = ""
+        if transit_summary:
+            summary_html = f"""
+                      <p style="margin:0; color:#18232b; font-size:14px; line-height:21px;">{escape(transit_summary)}</p>
+"""
+
+        pick_html = ""
+        if transit_pick_title and transit_pick_note:
+            pick_html = f"""
+                      <p style="margin:10px 0 0 0; color:#18232b; font-size:14px; line-height:21px;"><strong>Best easy ride:</strong> {escape(transit_pick_title)}<br />{escape(transit_pick_note)}</p>
+"""
+
+        return f"""
+            <tr>
+              <td style="padding:0 28px 24px 28px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f7fafb; border:1px solid #d7e0e5;">
+                  <tr>
+                    <td style="padding:16px;">
+                      <p style="margin:0 0 8px 0; color:#18232b; font-size:15px; line-height:22px; font-weight:bold;">
+                        CTA Watch
+                      </p>
+                      {summary_html}{pick_html}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>"""
+
+    def _transit_note_block(self, event: Event) -> str:
+        if not event.transit_note:
+            return ""
+
+        return f'<p style="margin:0 0 12px 0; color:#18232b; font-size:13px; line-height:20px;">{escape(event.transit_note)}</p>'
 
 
 def build_subject(target_date: date) -> str:
@@ -228,6 +296,18 @@ def build_subject(target_date: date) -> str:
     return EventEmailFormatter().build_subject(target_date)
 
 
-def build_html_email(events: List[Event], target_date: date) -> str:
+def build_html_email(
+    events: List[Event],
+    target_date: date,
+    transit_summary: str | None = None,
+    transit_pick_title: str | None = None,
+    transit_pick_note: str | None = None,
+) -> str:
     """Compatibility helper for older tests or scripts."""
-    return EventEmailFormatter().build_html_email(events, target_date)
+    return EventEmailFormatter().build_html_email(
+        events,
+        target_date,
+        transit_summary=transit_summary,
+        transit_pick_title=transit_pick_title,
+        transit_pick_note=transit_pick_note,
+    )

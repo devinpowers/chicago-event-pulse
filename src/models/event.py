@@ -16,6 +16,12 @@ class Event:
     source: str
     event_id: Optional[str] = None
     source_event_id: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    transit_station: Optional[str] = None
+    transit_lines: Optional[str] = None
+    transit_note: Optional[str] = None
+    transit_score: Optional[int] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
