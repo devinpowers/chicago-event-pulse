@@ -1,6 +1,7 @@
 from datetime import date
 
 from src.models.event import Event
+from src.services.cta_service import TransitDigestContext
 from src.services.digest_service import DailyDigestService
 from src.services.event_sources.base import EventSourceResult
 from src.services.formatter import EventEmailFormatter
@@ -23,6 +24,7 @@ def test_daily_digest_service_combines_multiple_event_sources():
         email_sender=email_sender,
         storage=storage,
         tables=tables,
+        transit_service=FakeTransitService(),
     )
 
     digest = digest_service.run(target_date)
@@ -86,6 +88,39 @@ class FakeTables:
 
     def upsert_digest(self, target_date, digest):
         pass
+
+
+class FakeTransitService:
+    def enrich_events(self, events):
+        enriched_events = []
+        for event in events:
+            enriched_events.append(
+                Event(
+                    title=event.title,
+                    date=event.date,
+                    start_time=event.start_time,
+                    venue=event.venue,
+                    address=event.address,
+                    category=event.category,
+                    price_min=event.price_min,
+                    price_max=event.price_max,
+                    url=event.url,
+                    source=event.source,
+                    event_id=event.event_id,
+                    source_event_id=event.source_event_id,
+                    latitude=event.latitude,
+                    longitude=event.longitude,
+                    transit_note="CTA Ease: Great.",
+                    transit_score=90,
+                )
+            )
+
+        return TransitDigestContext(
+            events=enriched_events,
+            summary="CTA Watch: Rail lines look mostly normal this morning.",
+            best_pick_title=enriched_events[0].title if enriched_events else None,
+            best_pick_note=enriched_events[0].transit_note if enriched_events else None,
+        )
 
 
 def _event(title, start_time):
