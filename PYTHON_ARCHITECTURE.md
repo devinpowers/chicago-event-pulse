@@ -44,15 +44,40 @@ This is the shape every event API should follow. Each event source returns an
 - `events`: normalized `Event` objects
 - `raw_file_name`: the file name to use in Blob Storage
 
+### `BaseApiEventSource`
+
+File: `src/services/event_sources/base.py`
+
+This is the parent class for event APIs that use HTTP requests. It owns the
+shared workflow:
+
+1. call the API
+2. get the raw JSON
+3. find the raw event items
+4. normalize each item into an `Event`
+5. return an `EventSourceResult`
+
+Child classes only fill in the API-specific pieces. This is the main parent /
+child relationship in the project.
+
 ### `TicketmasterEventSource`
 
 File: `src/services/event_sources/ticketmaster.py`
 
-This is our first event API. It knows how to:
+This is our first child class. It inherits from `BaseApiEventSource`.
+
+It knows how to:
 
 - call the Ticketmaster Discovery API
 - normalize the Ticketmaster response into our shared `Event` model
 - return both raw and normalized data
+
+### `EventSourceFactory`
+
+File: `src/services/event_sources/factory.py`
+
+This class decides which event sources the app should use. Right now it returns
+only Ticketmaster. Later it can add more APIs in one place.
 
 ### `Event`
 
@@ -82,29 +107,32 @@ This sends the prepared email through SendGrid.
 ## How To Add Another Event API
 
 1. Create a new file in `src/services/event_sources/`.
-2. Create a class that follows `EventSource`.
-3. In that class, call the external API.
-4. Convert that API response into a list of `Event` objects.
-5. Return an `EventSourceResult`.
-6. Add the new source to the list in `DailyDigestService.from_config()`.
+2. Create a child class that inherits from `BaseApiEventSource`.
+3. Implement the API-specific methods:
+   - `build_request_params()`
+   - `extract_raw_items()`
+   - `normalize_item()`
+4. Convert that API response into `Event` objects.
+5. Add the new source to `EventSourceFactory.build_sources()`.
 
 Example shape:
 
 ```python
-class NewApiEventSource(EventSource):
+class NewApiEventSource(BaseApiEventSource):
     name = "New API"
+    endpoint_url = "https://example.com/events"
+    raw_file_name = "new-api.json"
 
-    def collect_events(self, target_date):
-        raw_payload = self.fetch_raw_payload(target_date)
-        events = self.normalize_events(raw_payload)
+    def build_request_params(self, target_date):
+        return {"date": target_date.isoformat()}
 
-        return EventSourceResult(
-            raw_payload=raw_payload,
-            events=events,
-            raw_file_name="new-api.json",
-        )
+    def extract_raw_items(self, payload):
+        return payload.get("events", [])
+
+    def normalize_item(self, item):
+        return Event(...)
 ```
 
-Once the new source is added to `DailyDigestService.from_config()`, the rest of
+Once the new source is added to `EventSourceFactory.build_sources()`, the rest of
 the app can use it without changing the email, ranking, storage, or function
 trigger code.

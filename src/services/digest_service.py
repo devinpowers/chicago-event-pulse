@@ -6,7 +6,7 @@ from src.config import AppConfig
 from src.models.event import Event
 from src.services.email_service import SendGridEmailSender
 from src.services.event_sources.base import EventSource
-from src.services.event_sources.ticketmaster import TicketmasterEventSource
+from src.services.event_sources.factory import EventSourceFactory
 from src.services.formatter import EventEmailFormatter
 from src.services.ranking import EventRanker
 from src.services.storage_service import StorageService
@@ -49,12 +49,8 @@ class DailyDigestService:
             connection_string=config.storage_connection_string,
         )
 
-        event_sources: List[EventSource] = [
-            TicketmasterEventSource(api_key=config.ticketmaster_api_key),
-        ]
-
         return cls(
-            event_sources=event_sources,
+            event_sources=EventSourceFactory.build_sources(config),
             ranker=EventRanker(limit=10),
             formatter=EventEmailFormatter(),
             email_sender=SendGridEmailSender(

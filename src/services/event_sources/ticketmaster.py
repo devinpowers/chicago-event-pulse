@@ -1,52 +1,25 @@
 from datetime import date, datetime, time
-from typing import Dict, List, Optional
+from typing import List, Optional
 from zoneinfo import ZoneInfo
 
-import requests
-
 from src.models.event import Event
-from src.services.event_sources.base import EventSource, EventSourceResult
+from src.services.event_sources.base import BaseApiEventSource
 
 DISCOVERY_URL = "https://app.ticketmaster.com/discovery/v2/events.json"
 CHICAGO_LAT_LONG = "41.8781,-87.6298"
 
 
-class TicketmasterEventSource(EventSource):
+class TicketmasterEventSource(BaseApiEventSource):
     """Gets Chicago events from the Ticketmaster Discovery API."""
 
     name = "Ticketmaster"
+    endpoint_url = DISCOVERY_URL
+    raw_file_name = "ticketmaster.json"
 
     def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    def collect_events(self, target_date: date) -> EventSourceResult:
-        raw_payload = self.fetch_raw_payload(target_date)
-        events = self.normalize_events(raw_payload)
-
-        return EventSourceResult(
-            raw_payload=raw_payload,
-            events=events,
-            raw_file_name="ticketmaster.json",
-        )
-
-    def fetch_raw_payload(self, target_date: date) -> dict:
-        params = self._build_request_params(target_date)
-        response = requests.get(DISCOVERY_URL, params=params, timeout=20)
-        response.raise_for_status()
-        return response.json()
-
-    def normalize_events(self, payload: dict) -> List[Event]:
-        events = payload.get("_embedded", {}).get("events", [])
-        normalized_events = []
-
-        for item in events:
-            event = self._normalize_event(item)
-            if event:
-                normalized_events.append(event)
-
-        return normalized_events
-
-    def _build_request_params(self, target_date: date) -> dict:
+    def build_request_params(self, target_date: date) -> dict:
         start = datetime.combine(target_date, time.min, tzinfo=ZoneInfo("America/Chicago"))
         end = datetime.combine(target_date, time.max, tzinfo=ZoneInfo("America/Chicago"))
 
@@ -61,15 +34,18 @@ class TicketmasterEventSource(EventSource):
             "size": "50",
         }
 
-    def _normalize_event(self, item: dict) -> Optional[Event]:
+    def extract_raw_items(self, payload: dict) -> List[dict]:
+        return payload.get("_embedded", {}).get("events", [])
+
+    def normalize_item(self, item: dict) -> Optional[Event]:
         dates = item.get("dates", {}).get("start", {})
         local_date = dates.get("localDate")
         if not local_date:
             return None
 
-        venue = self._first(item.get("_embedded", {}).get("venues", []))
-        classification = self._first(item.get("classifications", []))
-        price_range = self._first(item.get("priceRanges", []))
+        venue = self.first_item(item.get("_embedded", {}).get("venues", []))
+        classification = self.first_item(item.get("classifications", []))
+        price_range = self.first_item(item.get("priceRanges", []))
 
         return Event(
             title=item.get("name", "Untitled event"),
@@ -85,9 +61,6 @@ class TicketmasterEventSource(EventSource):
             event_id=f"ticketmaster:{item.get('id')}" if item.get("id") else None,
             source_event_id=item.get("id"),
         )
-
-    def _first(self, items: List[Dict]) -> Optional[Dict]:
-        return items[0] if items else None
 
     def _category(self, classification: Optional[dict]) -> Optional[str]:
         if not classification:
