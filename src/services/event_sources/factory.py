@@ -2,6 +2,7 @@ from typing import List
 
 from src.config import AppConfig
 from src.services.event_sources.base import EventSource
+from src.services.event_sources.seatgeek import SeatGeekEventSource
 from src.services.event_sources.ticketmaster import TicketmasterEventSource
 
 
@@ -14,6 +15,11 @@ class EventSourceFactory:
 
     @staticmethod
     def build_sources(config: AppConfig) -> List[EventSource]:
-        return [
+        sources: List[EventSource] = [
             TicketmasterEventSource(api_key=config.ticketmaster_api_key),
         ]
+
+        if config.seatgeek_client_id:
+            sources.append(SeatGeekEventSource(client_id=config.seatgeek_client_id))
+
+        return sources

@@ -25,3 +25,7 @@ class Event:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls, payload: dict) -> "Event":
+        return cls(**payload)

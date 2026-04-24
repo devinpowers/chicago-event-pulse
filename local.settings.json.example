@@ -5,6 +5,7 @@
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "WEBSITE_TIME_ZONE": "America/Chicago",
     "TICKETMASTER_API_KEY": "replace-me",
+    "SEATGEEK_CLIENT_ID": "",
     "SENDGRID_API_KEY": "replace-me",
     "DAILY_EMAIL_TO": "you@example.com",
     "DAILY_EMAIL_FROM": "verified-sender@example.com",

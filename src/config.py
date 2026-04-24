@@ -6,6 +6,7 @@ from typing import Optional
 @dataclass(frozen=True)
 class AppConfig:
     ticketmaster_api_key: str
+    seatgeek_client_id: Optional[str]
     sendgrid_api_key: str
     daily_email_to: str
     daily_email_from: str
@@ -16,6 +17,7 @@ class AppConfig:
     def from_env(cls) -> "AppConfig":
         return cls(
             ticketmaster_api_key=_required("TICKETMASTER_API_KEY"),
+            seatgeek_client_id=_optional("SEATGEEK_CLIENT_ID"),
             sendgrid_api_key=_required("SENDGRID_API_KEY"),
             daily_email_to=_required("DAILY_EMAIL_TO"),
             daily_email_from=_required("DAILY_EMAIL_FROM"),
@@ -29,3 +31,8 @@ def _required(name: str) -> str:
     if not value:
         raise RuntimeError(f"Missing required setting: {name}")
     return value
+
+
+def _optional(name: str) -> Optional[str]:
+    value = os.getenv(name)
+    return value or None

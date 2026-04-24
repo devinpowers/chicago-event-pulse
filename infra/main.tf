@@ -114,6 +114,14 @@ resource "azurerm_key_vault_secret" "ticketmaster_api_key" {
   depends_on = [azurerm_key_vault_access_policy.deployer]
 }
 
+resource "azurerm_key_vault_secret" "seatgeek_client_id" {
+  name         = "SEATGEEK-CLIENT-ID"
+  value        = var.seatgeek_client_id
+  key_vault_id = azurerm_key_vault.main.id
+
+  depends_on = [azurerm_key_vault_access_policy.deployer]
+}
+
 resource "azurerm_key_vault_secret" "sendgrid_api_key" {
   name         = "SENDGRID-API-KEY"
   value        = var.sendgrid_api_key
@@ -167,6 +175,7 @@ resource "azurerm_linux_function_app" "main" {
     WEBSITE_TIME_ZONE        = "America/Chicago"
     STORAGE_ACCOUNT_NAME     = azurerm_storage_account.main.name
     TICKETMASTER_API_KEY     = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.ticketmaster_api_key.versionless_id})"
+    SEATGEEK_CLIENT_ID       = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.seatgeek_client_id.versionless_id})"
     SENDGRID_API_KEY         = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.sendgrid_api_key.versionless_id})"
     DAILY_EMAIL_TO           = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.daily_email_to.versionless_id})"
     DAILY_EMAIL_FROM         = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.daily_email_from.versionless_id})"

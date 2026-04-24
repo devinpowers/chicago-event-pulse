@@ -17,3 +17,9 @@ class StorageService:
         blob_client = self.client.get_blob_client(container=container_name, blob=blob_name)
         data = json.dumps(payload, indent=2, default=str)
         blob_client.upload_blob(data, overwrite=True, content_type="application/json")
+
+    def download_json(self, container_name: str, target_date: date, file_name: str) -> object:
+        blob_name = f"{target_date:%Y/%m/%d}/{file_name}"
+        blob_client = self.client.get_blob_client(container=container_name, blob=blob_name)
+        data = blob_client.download_blob().readall()
+        return json.loads(data)

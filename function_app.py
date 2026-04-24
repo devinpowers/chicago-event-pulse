@@ -7,6 +7,7 @@ import azure.functions as func
 
 from src.config import AppConfig
 from src.functions.daily_events_timer import run_daily_events_digest
+from src.services.transit_view_service import TransitViewService, build_transit_view_html
 
 app = func.FunctionApp()
 
@@ -36,6 +37,27 @@ def run_digest(req: func.HttpRequest) -> func.HttpResponse:
         return _json_response({"ok": True, "digest": digest})
     except Exception as exc:
         logging.exception("Manual digest run failed.")
+        return _json_response({"ok": False, "error": str(exc)}, status_code=500)
+
+
+@app.route(route="transit-view", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def transit_view(req: func.HttpRequest) -> func.HttpResponse:
+    target_date = _target_date_from_request(req)
+    return func.HttpResponse(
+        body=build_transit_view_html(target_date),
+        mimetype="text/html",
+        status_code=200,
+    )
+
+
+@app.route(route="transit-view-data", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def transit_view_data(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        target_date = _target_date_from_request(req)
+        data = TransitViewService.from_env().build_view_data(target_date)
+        return _json_response({"ok": True, "data": data})
+    except Exception as exc:
+        logging.exception("Transit view data request failed.")
         return _json_response({"ok": False, "error": str(exc)}, status_code=500)
 
 

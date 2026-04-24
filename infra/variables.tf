@@ -33,6 +33,13 @@ variable "ticketmaster_api_key" {
   sensitive   = true
 }
 
+variable "seatgeek_client_id" {
+  type        = string
+  description = "SeatGeek client id."
+  sensitive   = true
+  default     = ""
+}
+
 variable "sendgrid_api_key" {
   type        = string
   description = "SendGrid API key."

@@ -1,6 +1,7 @@
 import logging
 import math
 from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional, Sequence
 
 import requests
@@ -52,6 +53,14 @@ class CtaStation:
     longitude: float
     line_ids: Sequence[str]
     line_names: Sequence[str]
+
+
+@dataclass(frozen=True)
+class TransitMapData:
+    generated_at: str
+    summary: str
+    route_statuses: List[dict]
+    events: List[dict]
 
 
 class CtaTransitService:
@@ -121,6 +130,51 @@ class CtaTransitService:
             summary=self._build_summary(route_statuses),
             best_pick_title=best_pick.title if best_pick else None,
             best_pick_note=best_pick.transit_note if best_pick else None,
+        )
+
+    def build_map_data(self, events: List[Event]) -> TransitMapData:
+        try:
+            route_statuses = self._fetch_route_statuses()
+            stations = self._load_stations()
+        except Exception:
+            logging.exception("CTA transit map unavailable during setup.")
+            return TransitMapData(
+                generated_at=datetime.now(timezone.utc).isoformat(),
+                summary="CTA data is unavailable right now.",
+                route_statuses=[],
+                events=[self._event_payload(event, None, None, [], []) for event in events],
+            )
+
+        alert_cache: Dict[str, List[dict]] = {}
+        map_events = []
+
+        for event in events:
+            station = None
+            distance_miles = None
+            alerts: List[dict] = []
+            line_statuses: List[tuple[str, str]] = []
+
+            if event.latitude is not None and event.longitude is not None:
+                station, distance_miles = self._nearest_station(event.latitude, event.longitude, stations)
+                if station is not None and distance_miles <= MAX_WALKABLE_DISTANCE_MILES:
+                    alerts = alert_cache.get(station.station_id)
+                    if alerts is None:
+                        try:
+                            alerts = self._fetch_station_alerts(station.station_id)
+                        except Exception:
+                            logging.exception("CTA station alerts unavailable for %s.", station.station_id)
+                            alerts = []
+                        alert_cache[station.station_id] = alerts
+
+                    line_statuses = self._line_statuses_for_station(station, route_statuses)
+
+            map_events.append(self._event_payload(event, station, distance_miles, line_statuses, alerts))
+
+        return TransitMapData(
+            generated_at=datetime.now(timezone.utc).isoformat(),
+            summary=self._build_summary(route_statuses) or "CTA Watch unavailable.",
+            route_statuses=self._route_status_payload(route_statuses),
+            events=map_events,
         )
 
     def _load_stations(self) -> List[CtaStation]:
@@ -294,6 +348,71 @@ class CtaTransitService:
         if alerts:
             score -= 15
         return max(0, score)
+
+    def _event_payload(
+        self,
+        event: Event,
+        station: Optional[CtaStation],
+        distance_miles: Optional[float],
+        line_statuses: List[tuple[str, str]],
+        alerts: List[dict],
+    ) -> dict:
+        walk_minutes = None if distance_miles is None else max(1, round(distance_miles * 20))
+
+        return {
+            "title": event.title,
+            "category": event.category,
+            "venue": event.venue,
+            "address": event.address,
+            "start_time": event.start_time,
+            "date": event.date,
+            "url": event.url,
+            "price_min": event.price_min,
+            "price_max": event.price_max,
+            "transit_note": event.transit_note,
+            "transit_score": event.transit_score,
+            "coordinates": self._coordinates_payload(event.latitude, event.longitude),
+            "station": None
+            if station is None or distance_miles is None or distance_miles > MAX_WALKABLE_DISTANCE_MILES
+            else {
+                "id": station.station_id,
+                "name": station.station_name,
+                "description": station.descriptive_name,
+                "coordinates": self._coordinates_payload(station.latitude, station.longitude),
+                "lines": list(station.line_names),
+                "line_statuses": [
+                    {"line": line_name, "status": status}
+                    for line_name, status in line_statuses
+                ],
+                "walk_minutes": walk_minutes,
+                "alerts": [
+                    {
+                        "headline": alert.get("Headline") or alert.get("ShortDescription"),
+                        "impact": alert.get("Impact"),
+                        "major_alert": alert.get("MajorAlert") == "1",
+                    }
+                    for alert in alerts[:3]
+                ],
+            },
+        }
+
+    def _route_status_payload(self, route_statuses: Dict[str, str]) -> List[dict]:
+        payload = []
+        for _, (service_id, line_name) in LINE_FIELD_MAP.items():
+            status = route_statuses.get(service_id, "Status unavailable")
+            payload.append(
+                {
+                    "line_id": service_id,
+                    "line_name": line_name,
+                    "status": status,
+                }
+            )
+        return payload
+
+    def _coordinates_payload(self, latitude: Optional[float], longitude: Optional[float]) -> Optional[dict]:
+        if latitude is None or longitude is None:
+            return None
+        return {"latitude": latitude, "longitude": longitude}
 
     def _best_pick(self, events: List[Event]) -> Optional[Event]:
         candidates = [event for event in events if event.transit_score is not None and event.transit_note]
